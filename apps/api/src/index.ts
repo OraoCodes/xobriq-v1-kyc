@@ -34,7 +34,7 @@ const app = buildApp({
   providers: { test: new MockProvider(), live: new PelezaProvider() },
 });
 
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT) || 3000;
 app
   .listen({ port, host: "0.0.0.0" })
   // app.log is a no-op (logger: false) — console.log so a manual `tsx src/index.ts` run isn't silent.
