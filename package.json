@@ -1,0 +1,17 @@
+{
+  "name": "xobriq",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20", "pnpm": ">=9" },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @xobriq/api test",
+    "dev:api": "pnpm --filter @xobriq/api dev",
+    "dev:portal": "pnpm --filter @xobriq/portal dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
