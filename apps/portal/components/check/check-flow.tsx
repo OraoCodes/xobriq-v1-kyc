@@ -35,7 +35,8 @@ function errorMessageFor(code?: string, message?: string): string {
 }
 
 function buildRequestBody(values: CheckFormValues) {
-  const hasEventData = values.amount !== undefined || values.account_name || values.account_number;
+  const hasDisbursementAccount = Boolean(values.account_name || values.account_number || values.bank_id !== undefined);
+  const hasEventData = values.amount !== undefined || hasDisbursementAccount;
   return {
     event_type: "loan_application" as const,
     subject: {
@@ -46,11 +47,12 @@ function buildRequestBody(values: CheckFormValues) {
       ? {
           event_data: {
             ...(values.amount !== undefined ? { amount: values.amount, currency: "KES" } : {}),
-            ...(values.account_name || values.account_number
+            ...(hasDisbursementAccount
               ? {
                   disbursement_account: {
                     ...(values.account_name ? { account_name: values.account_name } : {}),
                     ...(values.account_number ? { account_number: values.account_number } : {}),
+                    ...(values.bank_id !== undefined ? { bank_id: values.bank_id } : {}),
                   },
                 }
               : {}),

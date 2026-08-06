@@ -19,7 +19,7 @@ describe("the seven-persona acceptance suite (plus the two hard-rule cases)", ()
       event_data: {
         amount: 50000,
         currency: "KES",
-        disbursement_account: { account_number: "10000001", account_name: "Alice Wanjiru Kamau" },
+        disbursement_account: { account_number: "10000001", account_name: "Alice Wanjiru Kamau", bank_id: 34 },
       },
       initiated_by: "api",
       device: { fingerprint: "device_alice_own" },
@@ -70,7 +70,7 @@ describe("the seven-persona acceptance suite (plus the two hard-rule cases)", ()
       event_data: {
         amount: 80000,
         currency: "KES",
-        disbursement_account: { account_number: "10000004", account_name: "Dennis Mwangi Kiptoo" },
+        disbursement_account: { account_number: "10000004", account_name: "Dennis Mwangi Kiptoo", bank_id: 34 },
       },
       initiated_by: "api",
       device: { fingerprint: "device_caroline_own" },
@@ -108,7 +108,7 @@ describe("the seven-persona acceptance suite (plus the two hard-rule cases)", ()
       event_data: {
         amount: 60000,
         currency: "KES",
-        disbursement_account: { account_number: "10000006", account_name: "Faith Njeri Kariuki" },
+        disbursement_account: { account_number: "10000006", account_name: "Faith Njeri Kariuki", bank_id: 34 },
       },
       initiated_by: "api",
       device: { fingerprint: "device_faith_own" },
@@ -128,7 +128,7 @@ describe("the seven-persona acceptance suite (plus the two hard-rule cases)", ()
       event_data: {
         amount: 70000,
         currency: "KES",
-        disbursement_account: { account_number: "10000007", account_name: "George Kiplagat Rono" },
+        disbursement_account: { account_number: "10000007", account_name: "George Kiplagat Rono", bank_id: 34 },
       },
       initiated_by: "api",
       device: { fingerprint: "device_george_own" },

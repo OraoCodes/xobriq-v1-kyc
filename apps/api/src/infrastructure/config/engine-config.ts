@@ -49,6 +49,38 @@ const WEIGHTS: WeightsConfig = {
       when: { feature: "credit.inquiries_7d", gte: 3 },
       evidence: ["credit.inquiries_7d"],
     },
+    // The three rules below are NEW, added when the real Peleza credit-info
+    // adapter shipped. Peleza can't honestly answer "how many in 7 days" (it
+    // only exposes 3/6/12-month buckets), so these are separate, honestly
+    // named rules rather than overloading CREDIT_INQUIRIES_ELEVATED above —
+    // that rule stays exactly as-is and keeps firing off MockProvider's own
+    // synthetic inquiries_7d. WEIGHTS BELOW ARE UNVALIDATED GUESSES, not
+    // calibrated against real loss data — flagged for review, not a
+    // confident recommendation.
+    {
+      code: "CREDIT_APPLICATIONS_ELEVATED_3M",
+      category: "credit",
+      weight: 80, // guess: same count as the 7d rule but over a 6x longer window reads as materially less urgent
+      severity: "medium",
+      when: { feature: "credit.applications_3m", gte: 3 },
+      evidence: ["credit.applications_3m"],
+    },
+    {
+      code: "CREDIT_SEVERE_ARREARS",
+      category: "credit",
+      weight: 300, // guess: 90+ days past due is a conventional bureau "seriously delinquent" threshold
+      severity: "high",
+      when: { feature: "credit.worst_days_in_arrears", gte: 90 },
+      evidence: ["credit.worst_days_in_arrears"],
+    },
+    {
+      code: "CREDIT_HAS_FRAUD_FLAG",
+      category: "credit",
+      weight: 550, // guess: a bureau-confirmed fraud flag is severe but this isn't (yet) a categorical hard rule like sanctions/deceased
+      severity: "critical",
+      when: { feature: "credit.has_fraud", equals: true },
+      evidence: ["credit.has_fraud"],
+    },
     {
       code: "GRAPH_ENTITY_FLAGGED",
       category: "graph",

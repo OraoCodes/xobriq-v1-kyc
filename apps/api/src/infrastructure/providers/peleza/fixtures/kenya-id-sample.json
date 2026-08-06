@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "response_code": 200,
+  "message": "Kenya ID details fetched successfully",
+  "country": "ke",
+  "data": {
+    "id_number": "10000001",
+    "first_name": "Alice",
+    "last_name": "Kamau",
+    "other_name": "Wanjiru",
+    "full_name": "Alice Wanjiru Kamau",
+    "gender": "Female",
+    "date_of_birth": "1990-05-14",
+    "date_of_death": null,
+    "citizenship": "Kenyan",
+    "verification_status": "Valid",
+    "is_valid": true,
+    "pin": "A100284531Z",
+    "has_photo": true,
+    "has_fingerprint": false,
+    "has_signature": true
+  },
+  "request_id": "req_synthetic_kenya_id_001"
+}

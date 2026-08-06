@@ -91,6 +91,14 @@ describe("hard rules", () => {
   it("valid adult → no hard rule", () => {
     expect(applyHardRules({ identityValid: true, applicantAge: 30 })).toBeNull();
   });
+  it("a non-null date_of_death → BLOCK with IDENTITY_DECEASED", () => {
+    const verdict = applyHardRules({ identityValid: true, applicantAge: 30, dateOfDeath: "2020-01-01" });
+    expect(verdict?.action).toBe("BLOCK");
+    expect(verdict?.reasons[0]?.code).toBe("IDENTITY_DECEASED");
+  });
+  it("a null date_of_death → no deceased rule (falls through to no hard rule for an otherwise-clean adult)", () => {
+    expect(applyHardRules({ identityValid: true, applicantAge: 30, dateOfDeath: null })).toBeNull();
+  });
 });
 
 describe("scorer config validation (feature-registry guard)", () => {

@@ -1,10 +1,10 @@
 import type { ProviderResult, IdentitySignal, CreditSignal } from "../../../domain/ports/identity-provider.js";
 import type {
-  PelezaIdentityEnvelope,
-  PelezaBankVerificationEnvelope,
+  PelezaKenyaIdEnvelope,
+  PelezaBankAccountEnvelope,
   PelezaKraEnvelope,
   PelezaDrivingLicenceEnvelope,
-  PelezaCreditEnvelope,
+  PelezaCreditInfoEnvelope,
 } from "./types.js";
 
 /**
@@ -22,47 +22,53 @@ function normaliseWireDate(raw: string | null): string | null {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Names arrive as separate parts; the domain reasons about one full_name. */
-function joinName(parts: ReadonlyArray<string | null>): string | null {
-  const joined = parts
-    .filter((p): p is string => p !== null && p.trim().length > 0)
-    .map((p) => p.trim())
-    .join(" ");
-  return joined.length > 0 ? joined : null;
-}
-
-function normaliseGender(raw: "MALE" | "FEMALE" | null): string | null {
-  if (raw === "MALE") return "M";
-  if (raw === "FEMALE") return "F";
+/** Peleza's Kenya-ID gender values ("Male"/"Female") → the port's single-letter convention (matches MockProvider). */
+function normaliseKenyaIdGender(raw: string): string | null {
+  const normalised = raw.trim().toLowerCase();
+  if (normalised === "male") return "M";
+  if (normalised === "female") return "F";
   return null;
 }
 
-export function parseIdentityEnvelope(envelope: PelezaIdentityEnvelope): ProviderResult<IdentitySignal> {
-  const latencyMs = envelope.meta.response_time_ms;
-  if (envelope.status !== "SUCCESS" || !envelope.data.person) {
-    return { status: "not_found", data: null, latencyMs };
-  }
+/**
+ * Pure mapping from a successfully-fetched Kenya-ID envelope to the
+ * vendor-neutral IdentitySignal. Assumes the envelope came from a 200
+ * response — HTTP-level failures (404/402/429/etc.) are classified by the
+ * adapter before this is ever called. Returns null when the envelope itself
+ * reports no match (`success: false` or a missing `data`), which the
+ * adapter treats as not_found.
+ */
+export function parseKenyaIdSignal(envelope: PelezaKenyaIdEnvelope): IdentitySignal | null {
+  if (!envelope.success || !envelope.data) return null;
 
-  const person = envelope.data.person;
-  const signal: IdentitySignal = {
-    id_valid: person.id_status === "ACTIVE",
-    full_name: joinName([person.first_name, person.middle_name, person.last_name]),
-    dob: normaliseWireDate(person.date_of_birth),
-    gender: normaliseGender(person.gender),
+  const d = envelope.data;
+  return {
+    id_valid: d.is_valid,
+    full_name: d.full_name,
+    dob: d.date_of_birth,
+    gender: normaliseKenyaIdGender(d.gender),
+    date_of_death: d.date_of_death,
+    pin: d.pin,
+    has_photo: d.has_photo,
+    has_fingerprint: d.has_fingerprint,
+    has_signature: d.has_signature,
   };
-  if (person.mobile_number) signal.phone_on_record = person.mobile_number;
-
-  return { status: "success", data: signal, latencyMs };
 }
 
-export function parseBankEnvelope(
-  envelope: PelezaBankVerificationEnvelope,
-): ProviderResult<Pick<IdentitySignal, "bank_account_name">> {
-  const latencyMs = envelope.meta.response_time_ms;
-  if (envelope.status !== "SUCCESS" || !envelope.data) {
-    return { status: "not_found", data: null, latencyMs };
-  }
-  return { status: "success", data: { bank_account_name: envelope.data.account_name }, latencyMs };
+/**
+ * Pure mapping from a successfully-fetched bank-account envelope to the
+ * narrow fragment the domain's bank cross-check consumes. `is_verified` is
+ * read but deliberately not used to gate the result — the cross-check
+ * exists to compare Peleza's account-holder name against IPRS independently
+ * of Peleza's own verification confidence, so gating on it would suppress
+ * evidence rather than use it.
+ */
+export function parseBankAccountSignal(
+  envelope: PelezaBankAccountEnvelope,
+): Pick<IdentitySignal, "bank_account_name"> | null {
+  const name = envelope.data?.account_holder?.name;
+  if (!envelope.success || !name) return null;
+  return { bank_account_name: name };
 }
 
 export function parseKraEnvelope(
@@ -85,22 +91,46 @@ export function parseDrivingLicenceEnvelope(
   return { status: "success", data: { dl_dob: normaliseWireDate(envelope.data.date_of_birth) }, latencyMs };
 }
 
-export function parseCreditEnvelope(envelope: PelezaCreditEnvelope): ProviderResult<CreditSignal> {
-  const latencyMs = envelope.meta.response_time_ms;
-  if (envelope.status !== "SUCCESS" || !envelope.data) {
-    return { status: "not_found", data: null, latencyMs };
-  }
+/** Peleza returns numeric values as strings ("11390.80") — parse safely, defaulting to 0 rather than throwing or propagating NaN. */
+function parseNumericString(raw: string | null | undefined): number {
+  if (raw === null || raw === undefined) return 0;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * Pure mapping from a successfully-fetched credit-info envelope to the
+ * vendor-neutral CreditSignal. Deliberately does NOT populate inquiries_7d /
+ * distinct_recent_inquirers — Peleza only exposes 3/6/12-month buckets, and
+ * fabricating a 7-day count from a 3-month one would misrepresent the data
+ * to the scorer. inquiries_3m / applications_3m carry Peleza's own honest
+ * granularity instead (see CreditSignal's doc comments).
+ */
+export function parseCreditInfoSignal(envelope: PelezaCreditInfoEnvelope): CreditSignal | null {
+  if (!envelope.success || !envelope.data) return null;
   const d = envelope.data;
-  return {
-    status: "success",
-    data: {
-      inquiries_7d: d.inquiries_7d,
-      distinct_recent_inquirers: d.distinct_recent_inquirers,
-      open_applications: d.open_applications,
-      overdue_ratio: d.overdue_ratio,
-      worst_days_in_arrears: d.worst_days_in_arrears,
-      report_status: d.report_status,
-    },
-    latencyMs,
+
+  const totalOutstanding = parseNumericString(d.account_summary?.total_outstanding_balance);
+  const totalOverdue = parseNumericString(d.account_summary?.total_overdue_balance);
+  const overdueRatio = totalOutstanding > 0 ? totalOverdue / totalOutstanding : 0;
+
+  const worstDaysInArrears = (d.account_info ?? []).reduce(
+    (max, account) => Math.max(max, account.highest_days_in_arrears ?? 0),
+    0,
+  );
+
+  const totalAccounts = d.account_summary?.total_accounts ?? 0;
+  const reportStatus: CreditSignal["report_status"] = totalAccounts === 0 ? "thin_file" : "found";
+
+  const signal: CreditSignal = {
+    open_applications: d.account_summary?.active_accounts ?? 0,
+    overdue_ratio: overdueRatio,
+    worst_days_in_arrears: worstDaysInArrears,
+    report_status: reportStatus,
   };
+  if (d.enquiries?.last_3_months !== undefined) signal.inquiries_3m = d.enquiries.last_3_months;
+  if (d.credit_applications?.last_3_months !== undefined) signal.applications_3m = d.credit_applications.last_3_months;
+  if (d.has_fraud !== undefined) signal.has_fraud = d.has_fraud;
+
+  return signal;
 }

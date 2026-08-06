@@ -12,6 +12,7 @@ import type { RiskReason, DecisionAction } from "@xobriq/shared";
 export interface HardRuleInput {
   identityValid: boolean | null;
   applicantAge: number | null;
+  dateOfDeath?: string | null;
   sanctionsHit?: boolean;
 }
 
@@ -33,6 +34,17 @@ export function applyHardRules(input: HardRuleInput): HardRuleVerdict | null {
       direction: "increases_risk",
       severity: "critical",
       evidence: { identity_valid: input.identityValid },
+    });
+  }
+
+  if (input.dateOfDeath) {
+    return block({
+      code: "IDENTITY_DECEASED",
+      category: "identity",
+      weight: 1000,
+      direction: "increases_risk",
+      severity: "critical",
+      evidence: { date_of_death: input.dateOfDeath },
     });
   }
 

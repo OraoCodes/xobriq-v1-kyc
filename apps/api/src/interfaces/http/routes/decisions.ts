@@ -24,6 +24,7 @@ function buildDisbursementAccount(account: NonNullable<NonNullable<ParsedDecisio
   const result: DisbursementAccount = {};
   if (account.account_name !== undefined) result.account_name = account.account_name;
   if (account.account_number !== undefined) result.account_number = account.account_number;
+  if (account.bank_id !== undefined) result.bank_id = account.bank_id;
   return result;
 }
 

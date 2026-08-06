@@ -45,15 +45,30 @@ export interface IdentitySignal {
   kra_taxpayer_name?: string | null;
   dl_dob?: string | null;
   phone_on_record?: string | null;
+  /** Non-null means the registry records this identity as deceased — a categorical hard-rule signal, not a scored one. */
+  date_of_death?: string | null;
+  /** Captured for future use — no rule reads these yet. */
+  pin?: string | null;
+  has_photo?: boolean;
+  has_fingerprint?: boolean;
+  has_signature?: boolean;
 }
 
 export interface CreditSignal {
-  inquiries_7d: number;
-  distinct_recent_inquirers: number;
+  /** MockProvider's own synthetic 7-day window. Peleza's credit-info does NOT expose a 7-day bucket (only 3/6/12-month) — its adapter leaves this unset rather than fabricate one. See inquiries_3m. */
+  inquiries_7d?: number;
+  /** MockProvider-only — Peleza's credit-info exposes no distinct-lender breakdown. */
+  distinct_recent_inquirers?: number;
   open_applications: number;
   overdue_ratio: number; // 0..1 — overdue balance / total balance
   worst_days_in_arrears: number;
   report_status: "found" | "thin_file" | "not_found";
+  /** Peleza credit-info's honest granularity — credit enquiries pulled in the last 3 months. */
+  inquiries_3m?: number;
+  /** Peleza credit-info's honest granularity — loan applications submitted in the last 3 months (the loan-stacking signal). */
+  applications_3m?: number;
+  /** The bureau's own fraud flag, when the vendor exposes one. */
+  has_fraud?: boolean;
 }
 
 /**
@@ -68,7 +83,11 @@ export interface CreditSignal {
 export interface IdentityProvider {
   getIdentity(nationalId: string): Promise<ProviderResult<IdentitySignal>>;
   getCredit(nationalId: string): Promise<ProviderResult<CreditSignal>>;
-  getBankAccountName(accountNumber: string): Promise<ProviderResult<Pick<IdentitySignal, "bank_account_name">>>;
+  /** bankId (Peleza's bank id — see banks.ts) is required for a real lookup; omit it to skip cleanly rather than guess. */
+  getBankAccountName(
+    accountNumber: string,
+    bankId?: number,
+  ): Promise<ProviderResult<Pick<IdentitySignal, "bank_account_name">>>;
   getKraTaxpayerName(kraPin: string): Promise<ProviderResult<Pick<IdentitySignal, "kra_taxpayer_name">>>;
   getDrivingLicence(nationalId: string): Promise<ProviderResult<Pick<IdentitySignal, "dl_dob">>>;
 }

@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "response_code": 200,
+  "message": "Bank account verified successfully",
+  "data": {
+    "account_number": "10000001",
+    "bank": { "id": 1, "name": "Equity Bank" },
+    "account_holder": { "name": "Alice Wanjiru Kamau" },
+    "status": "verified",
+    "is_verified": true
+  },
+  "request_id": "req_synthetic_bank_account_001"
+}

@@ -45,12 +45,16 @@ export function identityFeatures(identity: IdentitySignal): Partial<Features> {
 }
 
 export function creditFeatures(credit: CreditSignal): Partial<Features> {
-  return {
-    "credit.inquiries_7d": credit.inquiries_7d,
-    "credit.distinct_recent_inquirers": credit.distinct_recent_inquirers,
+  const features: Partial<Features> = {
     "credit.open_applications": credit.open_applications,
     "credit.overdue_ratio": credit.overdue_ratio,
     "credit.worst_days_in_arrears": credit.worst_days_in_arrears,
     "credit.report_status": credit.report_status,
   };
+  if (credit.inquiries_7d !== undefined) features["credit.inquiries_7d"] = credit.inquiries_7d;
+  if (credit.distinct_recent_inquirers !== undefined) features["credit.distinct_recent_inquirers"] = credit.distinct_recent_inquirers;
+  if (credit.inquiries_3m !== undefined) features["credit.inquiries_3m"] = credit.inquiries_3m;
+  if (credit.applications_3m !== undefined) features["credit.applications_3m"] = credit.applications_3m;
+  if (credit.has_fraud !== undefined) features["credit.has_fraud"] = credit.has_fraud;
+  return features;
 }

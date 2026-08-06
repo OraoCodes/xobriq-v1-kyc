@@ -67,43 +67,24 @@ describe("MockProvider — the seven canonical personas", () => {
   });
 });
 
-describe("PelezaProvider — real-envelope parsing pipeline", () => {
-  it("parses the identity envelope into a valid IdentitySignal, normalising the wire date", async () => {
-    const result = await peleza.getIdentity("10000001");
-    expect(result.status).toBe("success");
-    expect(result.data).toEqual({
-      id_valid: true,
-      full_name: "Alice Wanjiru Kamau",
-      dob: "1990-05-14", // wire format was 14-05-1990
-      gender: "F", // wire format was FEMALE
-      phone_on_record: "+254711000001",
-    });
-  });
-
-  it("parses the bank, KRA, and driving-licence envelopes into narrow fragments", async () => {
-    const bank = await peleza.getBankAccountName("0011223344");
+// getIdentity, getBankAccountName, and getCredit are now real, authenticated
+// HTTP calls (see peleza-provider.ts) and are covered — mocked fetch, error
+// mapping, and parity vs MockProvider — in peleza-kenya-id.test.ts,
+// peleza-bank-account.test.ts, and peleza-credit-info.test.ts respectively.
+// KRA/driving-licence below still serve the earlier modeled/unverified
+// fixture pipeline (see types.ts) and are untouched here.
+describe("PelezaProvider — modeled KRA/driving-licence envelope parsing", () => {
+  it("parses the KRA and driving-licence envelopes into narrow fragments", async () => {
     const kra = await peleza.getKraTaxpayerName("A001234567B");
     const dl = await peleza.getDrivingLicence("10000001");
 
-    expect(bank.data).toEqual({ bank_account_name: "Alice Wanjiru Kamau" });
     expect(kra.data).toEqual({ kra_taxpayer_name: "Alice Wanjiru Kamau" });
     expect(dl.data).toEqual({ dl_dob: "1990-05-14" });
   });
 
-  it("parses the credit envelope into a CreditSignal", async () => {
-    const credit = await peleza.getCredit("10000001");
-    expect(credit.status).toBe("success");
-    expect(credit.data?.report_status).toBe("found");
-  });
-});
-
-describe("parity — Mock and Peleza yield the same IdentitySignal shape for the same synthetic person", () => {
-  it("both providers agree on Alice's identity fields", async () => {
-    const fromMock = await mock.getIdentity("10000001");
-    const fromPeleza = await peleza.getIdentity("10000001");
-
-    expect(fromMock.status).toBe("success");
-    expect(fromPeleza.status).toBe("success");
-    expect(fromPeleza.data).toEqual(fromMock.data);
+  it("getBankAccountName without a bank_id returns not_found rather than fabricating one", async () => {
+    const bank = await peleza.getBankAccountName("0011223344");
+    expect(bank.status).toBe("not_found");
+    expect(bank.data).toBeNull();
   });
 });

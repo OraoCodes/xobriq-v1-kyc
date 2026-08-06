@@ -43,7 +43,7 @@ describe("the seven personas, through HTTP (plus the two hard-rule cases)", () =
         event_data: {
           amount: 50000,
           currency: "KES",
-          disbursement_account: { account_number: "10000001", account_name: "Alice Wanjiru Kamau" },
+          disbursement_account: { account_number: "10000001", account_name: "Alice Wanjiru Kamau", bank_id: 34 },
         },
         initiated_by: "api",
         device: { fingerprint: "http_device_alice" },
@@ -98,7 +98,7 @@ describe("the seven personas, through HTTP (plus the two hard-rule cases)", () =
         event_data: {
           amount: 80000,
           currency: "KES",
-          disbursement_account: { account_number: "10000004", account_name: "Dennis Mwangi Kiptoo" },
+          disbursement_account: { account_number: "10000004", account_name: "Dennis Mwangi Kiptoo", bank_id: 34 },
         },
         initiated_by: "api",
         device: { fingerprint: "http_device_caroline" },
@@ -138,7 +138,7 @@ describe("the seven personas, through HTTP (plus the two hard-rule cases)", () =
         event_data: {
           amount: 60000,
           currency: "KES",
-          disbursement_account: { account_number: "10000006", account_name: "Faith Njeri Kariuki" },
+          disbursement_account: { account_number: "10000006", account_name: "Faith Njeri Kariuki", bank_id: 34 },
         },
         initiated_by: "api",
         device: { fingerprint: "http_device_faith" },
@@ -160,7 +160,7 @@ describe("the seven personas, through HTTP (plus the two hard-rule cases)", () =
         event_data: {
           amount: 70000,
           currency: "KES",
-          disbursement_account: { account_number: "10000007", account_name: "George Kiplagat Rono" },
+          disbursement_account: { account_number: "10000007", account_name: "George Kiplagat Rono", bank_id: 34 },
         },
         initiated_by: "api",
         device: { fingerprint: "http_device_george" },
@@ -248,6 +248,25 @@ describe("validation", () => {
     expect(body.error.code).toBe("VALIDATION_ERROR");
     expect(Array.isArray(body.error.details.issues)).toBe(true);
     expect(body.error.details.issues.length).toBeGreaterThan(0);
+  });
+
+  it("an unrecognized bank_id -> 422 with a bank_id field issue, never reaches the provider", async () => {
+    const { app } = buildTestApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/v1/decisions",
+      headers: authHeaders(),
+      payload: {
+        event_type: "loan_application",
+        subject: { national_id: "10000004" },
+        event_data: { disbursement_account: { account_number: "10000004", bank_id: 99999 } },
+        initiated_by: "api",
+      },
+    });
+    expect(res.statusCode).toBe(422);
+    const body = res.json();
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details.issues.some((i: { path: string }) => i.path === "event_data.disbursement_account.bank_id")).toBe(true);
   });
 });
 

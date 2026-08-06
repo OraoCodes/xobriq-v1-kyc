@@ -1,4 +1,5 @@
 import type { DecisionRequest, Features, SignalUsage } from "@xobriq/shared";
+import { isValidBankId } from "@xobriq/shared";
 import type { SignalOutcome } from "../domain/services/confidence.js";
 import type { HardRuleVerdict } from "../domain/services/rules.js";
 import { applyHardRules } from "../domain/services/rules.js";
@@ -132,7 +133,11 @@ export class SignalGatherer {
     }
 
     const identity = result.data;
-    const hardRule = applyHardRules({ identityValid: identity.id_valid, applicantAge: computeAge(identity.dob) });
+    const hardRule = applyHardRules({
+      identityValid: identity.id_valid,
+      applicantAge: computeAge(identity.dob),
+      dateOfDeath: identity.date_of_death ?? null,
+    });
     return { identity, features: identityFeatures(identity), signalsUsed, hardRule };
   }
 
@@ -147,16 +152,26 @@ export class SignalGatherer {
     signalsUsed.push(signalUsageFrom("credit_bureau", credit, 2));
     if (credit.status === "success" && credit.data) features = { ...features, ...creditFeatures(credit.data) };
 
-    const accountNumber = request.event_data?.disbursement_account?.account_number;
-    if (accountNumber) {
-      const bank = await this.provider.getBankAccountName(accountNumber);
+    const disbursementAccount = request.event_data?.disbursement_account;
+    const accountNumber = disbursementAccount?.account_number;
+    const bankId = disbursementAccount?.bank_id;
+
+    if (accountNumber && bankId !== undefined && isValidBankId(bankId)) {
+      const bank = await this.provider.getBankAccountName(accountNumber, bankId);
       const match = bank.status === "success" ? namesMatch(bank.data?.bank_account_name, identity.full_name) : null;
       outcomes.push({ key: "bank", status: bank.status, ...(match !== null ? { mismatch: !match } : {}) });
       signalsUsed.push(signalUsageFrom("bank_verification", bank, 2));
       if (match !== null) features["xcheck.bank_name_match"] = match;
     } else {
+      // Never pass an unverified bank_id to Peleza — a bad id checks the
+      // WRONG bank and would silently corrupt the mismatch signal.
+      const reason = !accountNumber
+        ? "no disbursement account in the request"
+        : bankId === undefined
+          ? "no bank_id supplied — bank check skipped"
+          : "bank_id is not a recognized Peleza bank id";
       outcomes.push({ key: "bank", status: "skipped" });
-      signalsUsed.push({ source: "bank_verification", status: "skipped", latency_ms: null, cost_tier: 2, reason: "no disbursement account in the request" });
+      signalsUsed.push({ source: "bank_verification", status: "skipped", latency_ms: null, cost_tier: 2, reason });
     }
 
     const kraPin = request.event_data?.kra_pin;

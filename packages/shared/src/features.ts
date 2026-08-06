@@ -43,6 +43,11 @@ export const FEATURE_KEYS = [
   "credit.overdue_ratio",
   "credit.worst_days_in_arrears",
   "credit.report_status",
+  // Peleza credit-info's own granularity (3-month buckets, not 7-day) — kept
+  // as distinct, honestly-named keys rather than overloading inquiries_7d.
+  "credit.inquiries_3m",
+  "credit.applications_3m",
+  "credit.has_fraud",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];

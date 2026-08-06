@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidBankId } from "@xobriq/shared";
 
 /**
  * Zod at the edge only — mirrors @xobriq/shared's DecisionRequest so the
@@ -18,7 +19,15 @@ export const DecisionRequestSchema = z.object({
       amount: z.number().optional(),
       currency: z.string().optional(),
       disbursement_account: z
-        .object({ account_name: z.string().optional(), account_number: z.string().optional() })
+        .object({
+          account_name: z.string().optional(),
+          account_number: z.string().optional(),
+          bank_id: z.number().int().optional(),
+        })
+        .refine((val) => val.bank_id === undefined || isValidBankId(val.bank_id), {
+          message: "bank_id is not a recognized Peleza bank id",
+          path: ["bank_id"],
+        })
         .optional(),
       kra_pin: z.string().optional(),
     })

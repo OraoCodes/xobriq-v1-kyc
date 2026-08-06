@@ -45,7 +45,16 @@ const PUBLIC_ROUTES = new Set(["/health", "/v1/auth/login"]);
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: false, bodyLimit: 100_000 });
 
-  app.register(cors);
+  // Only relevant if a browser ever calls this API cross-origin directly —
+  // the portal itself never does (it proxies server-to-server, see
+  // apps/portal/lib/xobriq-server.ts's `server-only` guard), so this mainly
+  // matters for third-party developer integrations. CORS_ORIGINS is a
+  // comma-separated allowlist; unset means "no restriction" (@fastify/cors's
+  // own default), preserving current behaviour for anyone who hasn't set it.
+  const corsOrigins = process.env.CORS_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+  app.register(cors, { origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true });
 
   // Runs before rate-limit's own hook (registered below) so per-subject limiting
   // can read request.auth; also the single place that validates/echoes the

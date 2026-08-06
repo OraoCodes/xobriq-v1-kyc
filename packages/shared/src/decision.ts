@@ -15,6 +15,8 @@ import type { DecisionAction, RiskBand, InitiatedBy } from "./verdict.js";
 export interface DisbursementAccount {
   account_name?: string; // powers the mule / name-mismatch signal
   account_number?: string;
+  /** Peleza bank id (see banks.ts / BANKS) — required to actually run the bank check. */
+  bank_id?: number;
 }
 
 export interface DecisionRequest {

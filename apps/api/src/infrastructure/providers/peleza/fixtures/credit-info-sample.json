@@ -1,0 +1,46 @@
+{
+  "success": true,
+  "response_code": 200,
+  "message": "Credit info fetched successfully",
+  "data": {
+    "identity_number": "10000004",
+    "identity_type": "001",
+    "credit_score": "540.00",
+    "delinquency_code": "003",
+    "has_fraud": false,
+    "is_guarantor": false,
+    "bounced_cheques": { "last_3_months": 0, "last_6_months": 0, "last_12_months": 0 },
+    "credit_applications": { "last_3_months": 3, "last_6_months": 4, "last_12_months": 6 },
+    "enquiries": { "last_3_months": 3, "last_6_months": 5, "last_12_months": 8 },
+    "account_summary": {
+      "total_accounts": 5,
+      "active_accounts": 2,
+      "closed_accounts": 3,
+      "total_outstanding_balance": "11390.80",
+      "total_overdue_balance": "1139.08"
+    },
+    "account_info": [
+      {
+        "account_number": "ACC-SYN-001",
+        "account_status": "Open",
+        "days_in_arrears": 12,
+        "highest_days_in_arrears": 30,
+        "delinquency_code": "002",
+        "overdue_balance": "1139.08",
+        "product_type_id": 7
+      },
+      {
+        "account_number": "ACC-SYN-002",
+        "account_status": "Closed",
+        "days_in_arrears": 0,
+        "highest_days_in_arrears": 3,
+        "delinquency_code": "003",
+        "overdue_balance": "0.00",
+        "product_type_id": 7
+      }
+    ],
+    "guarantors": null,
+    "stakeholders": null
+  },
+  "request_id": "req_synthetic_credit_info_001"
+}

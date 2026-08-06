@@ -28,8 +28,11 @@ declare module "fastify" {
  * request body. Two credential kinds resolve to the same shape:
  *   - `sk_test_`/`sk_live_` — api_keys, for third-party/developer integration.
  *   - `sess_...`            — account_sessions, for the logged-in portal.
- * A session always resolves to "test" mode (no live provider wired yet) and
- * carries the operator's role, which admin-only routes check separately.
+ * A session always resolves to "test" mode — the portal is the demo path and
+ * always runs against MockProvider, never the real Peleza integration, even
+ * though the live provider is now fully wired for sk_live_ API-key callers.
+ * A session also carries the operator's role, which admin-only routes check
+ * separately.
  * Every failure path is an indistinguishable 401 — no hints for probing.
  */
 export async function authenticate(

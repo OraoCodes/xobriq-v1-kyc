@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, type FormEvent } from "react";
+import { BankCombobox } from "./bank-combobox";
 
 export interface CheckFormValues {
   national_id: string;
@@ -8,6 +9,7 @@ export interface CheckFormValues {
   phone?: string;
   account_name?: string;
   account_number?: string;
+  bank_id?: number;
   reference_id?: string;
 }
 
@@ -26,6 +28,7 @@ export function CheckForm({
   const [phone, setPhone] = useState("");
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
+  const [bankId, setBankId] = useState<number | undefined>(undefined);
   const [referenceId, setReferenceId] = useState(initialReferenceId ?? "");
   const [error, setError] = useState<string | null>(null);
   const idInputRef = useRef<HTMLInputElement>(null);
@@ -46,6 +49,7 @@ export function CheckForm({
     if (phone.trim()) values.phone = phone.trim();
     if (accountName.trim()) values.account_name = accountName.trim();
     if (accountNumber.trim()) values.account_number = accountNumber.trim();
+    if (bankId !== undefined) values.bank_id = bankId;
     if (referenceId.trim()) values.reference_id = referenceId.trim();
 
     onSubmit(values);
@@ -102,6 +106,10 @@ export function CheckForm({
             <LabeledInput label="Reference label" value={referenceId} onChange={setReferenceId} disabled={disabled} placeholder="Loan ref / notes" />
             <LabeledInput label="Disbursement account name" value={accountName} onChange={setAccountName} disabled={disabled} placeholder="As given by applicant" />
             <LabeledInput label="Disbursement account number" value={accountNumber} onChange={setAccountNumber} disabled={disabled} placeholder="Account number" />
+            <div className="sm:col-span-2">
+              <BankCombobox bankId={bankId} onChange={setBankId} disabled={disabled} />
+              <p className="mt-1 text-xs text-ink-soft/80">Select the bank to check the payout account against the applicant&rsquo;s identity.</p>
+            </div>
           </div>
         )}
 
