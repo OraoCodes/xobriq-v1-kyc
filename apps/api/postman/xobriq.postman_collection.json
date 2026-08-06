@@ -1,0 +1,218 @@
+{
+  "info": {
+    "name": "xobriq API",
+    "description": "Fraud-decisioning API. Auth is Bearer — either an sk_test_/sk_live_ API key, or a sess_ token from /v1/auth/login. Set {{api_key}} in the environment and every request except Health/Login inherits it automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{api_key}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://xobriq-api.onrender.com" },
+    { "key": "api_key", "value": "sk_test_your_key_here" },
+    { "key": "decision_id", "value": "" },
+    { "key": "case_id", "value": "" },
+    { "key": "key_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health",
+            "auth": { "type": "noauth" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /v1/auth/login",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/login",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"founder@acme.test\",\n  \"password\": \"design-partner-2026\"\n}"
+            },
+            "description": "Public — no auth needed. Returns a sess_ token you can use as {{api_key}} instead of an sk_test_ key, plus customer_id/customer_name/role."
+          }
+        },
+        {
+          "name": "POST /v1/auth/logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/auth/logout",
+            "description": "Invalidates the session token used as the bearer credential. Only meaningful for sess_ tokens, not sk_test_/sk_live_ keys."
+          }
+        },
+        {
+          "name": "GET /v1/auth/me",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/auth/me",
+            "description": "Who am I — customer_id, customer_name, email, role, and whether auth came via api_key or session."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Decisions",
+      "item": [
+        {
+          "name": "POST /v1/decisions — 10000001 clean (ALLOW)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/decisions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Xobriq-Manual", "value": "true" },
+              { "key": "Idempotency-Key", "value": "{{$guid}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"loan_application\",\n  \"subject\": { \"national_id\": \"10000001\", \"phone\": \"+254711000001\" },\n  \"event_data\": { \"amount\": 15000 },\n  \"initiated_by\": \"manual\"\n}"
+            },
+            "description": "Save the returned \"id\" into the decision_id collection variable to use the GET-by-id request below."
+          }
+        },
+        {
+          "name": "POST /v1/decisions — 10000004 thesis case (bank mismatch, BLOCK)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/decisions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Xobriq-Manual", "value": "true" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"loan_application\",\n  \"subject\": { \"national_id\": \"10000004\" },\n  \"event_data\": {\n    \"amount\": 15000,\n    \"disbursement_account\": { \"account_number\": \"10000004\", \"account_name\": \"John Mwangi Kamau\" }\n  },\n  \"initiated_by\": \"manual\"\n}"
+            },
+            "description": "MockProvider keys its bank-mismatch fixture by account_number == national_id. Without account_number, this persona lands ALLOW instead."
+          }
+        },
+        {
+          "name": "POST /v1/decisions — 10000005 thin file (STEP_UP)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/decisions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Xobriq-Manual", "value": "true" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"loan_application\",\n  \"subject\": { \"national_id\": \"10000005\" },\n  \"initiated_by\": \"manual\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /v1/decisions — 10000007 credit bureau timeout (degraded)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/decisions",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Xobriq-Manual", "value": "true" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"loan_application\",\n  \"subject\": { \"national_id\": \"10000007\" },\n  \"event_data\": { \"amount\": 15000, \"disbursement_account\": { \"account_number\": \"10000007\" } },\n  \"initiated_by\": \"manual\"\n}"
+            },
+            "description": "Check signals_used for source: credit_bureau, status: timeout — the decision still returns instead of failing."
+          }
+        },
+        {
+          "name": "GET /v1/decisions/:id",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/decisions/{{decision_id}}",
+            "description": "Tenant-scoped — a decision belonging to another customer returns 404, never 403."
+          }
+        },
+        {
+          "name": "GET /v1/decisions (list, paginated)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/decisions?initiated_by=manual&limit=20&offset=0"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cases (review queue)",
+      "item": [
+        {
+          "name": "GET /v1/cases?status=open",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/cases?status=open",
+            "description": "Save an id from the response into the case_id collection variable to use the requests below."
+          }
+        },
+        {
+          "name": "GET /v1/cases/:id",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/cases/{{case_id}}"
+          }
+        },
+        {
+          "name": "POST /v1/cases/:id/resolve",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/cases/{{case_id}}/resolve",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"resolution\": \"approved\",\n  \"reason_code\": \"device_family_shared\"\n}"
+            },
+            "description": "reason_code is required — the training label. Resolving an already-resolved case returns 409 CASE_NOT_OPEN."
+          }
+        }
+      ]
+    },
+    {
+      "name": "API Keys (admin, session-only)",
+      "item": [
+        {
+          "name": "GET /v1/keys",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/keys",
+            "description": "Works with either an api_key or a session — masked prefixes only, never the raw secret."
+          }
+        },
+        {
+          "name": "POST /v1/keys/:id/rotate",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/v1/keys/{{key_id}}/rotate",
+            "description": "Requires an admin SESSION token as {{api_key}} (from /v1/auth/login) — an sk_test_/sk_live_ key cannot rotate keys. The response's \"secret\" field is the only time the new raw key is ever shown."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stats",
+      "item": [
+        {
+          "name": "GET /v1/stats",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/v1/stats"
+          }
+        }
+      ]
+    }
+  ]
+}
