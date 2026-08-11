@@ -18,8 +18,25 @@ export interface DecisionCoreData {
   latency_ms: number | null;
   /** Absent for decisions fetched from history/review (not persisted) — only present on a fresh result. */
   mode?: "test" | "live";
-  applicant?: { full_name: string | null };
+  applicant?: {
+    id_valid: boolean;
+    full_name: string | null;
+    dob: string | null;
+    gender: string | null;
+    phone_on_record?: string | null;
+    date_of_death?: string | null;
+    pin?: string | null;
+    has_photo?: boolean;
+    has_fingerprint?: boolean;
+    has_signature?: boolean;
+  };
   credit_detail?: { score: string | null; delinquency_code: string | null; is_guarantor: boolean | null };
+}
+
+function genderLabel(gender: string | null): string {
+  if (gender === "M") return "Male";
+  if (gender === "F") return "Female";
+  return "Unknown";
 }
 
 function ModeBadge({ mode }: { mode: "test" | "live" }) {
@@ -104,12 +121,57 @@ export function DecisionCore({ decision, subtitle }: { decision: DecisionCoreDat
               <span className="font-normal text-ink-soft/70">— for digging deeper</span>
             </span>
           </summary>
+          {decision.applicant?.date_of_death && (
+            <div className="mb-4 rounded-lg border border-block/40 bg-block-tint px-3 py-2 text-sm font-medium text-block">
+              Registry records this identity as deceased ({decision.applicant.date_of_death})
+            </div>
+          )}
           <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             {decision.applicant && (
-              <div>
-                <dt className="text-xs text-ink-soft">Full name (from identity check)</dt>
-                <dd className="mt-0.5 text-ink">{decision.applicant.full_name ?? "Not resolved"}</dd>
-              </div>
+              <>
+                <div>
+                  <dt className="text-xs text-ink-soft">Full name (from identity check)</dt>
+                  <dd className="mt-0.5 text-ink">{decision.applicant.full_name ?? "Not resolved"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink-soft">Identity valid</dt>
+                  <dd className="mt-0.5 text-ink">{decision.applicant.id_valid ? "Yes" : "No"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink-soft">Date of birth</dt>
+                  <dd className="mt-0.5 font-mono text-ink">{decision.applicant.dob ?? "Not resolved"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink-soft">Gender</dt>
+                  <dd className="mt-0.5 text-ink">{genderLabel(decision.applicant.gender)}</dd>
+                </div>
+                {decision.applicant.phone_on_record && (
+                  <div>
+                    <dt className="text-xs text-ink-soft">Phone on record</dt>
+                    <dd className="mt-0.5 font-mono text-ink">{decision.applicant.phone_on_record}</dd>
+                  </div>
+                )}
+                {decision.applicant.pin && (
+                  <div>
+                    <dt className="text-xs text-ink-soft">KRA PIN</dt>
+                    <dd className="mt-0.5 font-mono text-ink">{decision.applicant.pin}</dd>
+                  </div>
+                )}
+                {(decision.applicant.has_photo !== undefined ||
+                  decision.applicant.has_fingerprint !== undefined ||
+                  decision.applicant.has_signature !== undefined) && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-ink-soft">Biometrics on file</dt>
+                    <dd className="mt-0.5 flex gap-4 text-ink">
+                      {decision.applicant.has_photo !== undefined && <span>Photo {decision.applicant.has_photo ? "✓" : "✗"}</span>}
+                      {decision.applicant.has_fingerprint !== undefined && (
+                        <span>Fingerprint {decision.applicant.has_fingerprint ? "✓" : "✗"}</span>
+                      )}
+                      {decision.applicant.has_signature !== undefined && <span>Signature {decision.applicant.has_signature ? "✓" : "✗"}</span>}
+                    </dd>
+                  </div>
+                )}
+              </>
             )}
             {decision.credit_detail?.score !== null && decision.credit_detail?.score !== undefined && (
               <div>

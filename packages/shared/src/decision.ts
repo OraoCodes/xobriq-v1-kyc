@@ -107,11 +107,31 @@ export interface DecisionResponse {
   /**
    * Analyst-detail, for digging into a fresh result — HTTP layer only, not
    * persisted, so a decision fetched later via history/review won't carry
-   * these fields. `full_name` is always present (null if unresolved);
-   * `credit_detail` only when the credit-bureau lookup actually ran and
-   * succeeded. None of this is scored — it's read-only context.
+   * these fields. None of this is scored — it's read-only context.
+   *
+   * `applicant` is always present (id_valid/full_name/dob/gender come
+   * straight from the identity lookup, null/false when unresolved).
+   * `phone_on_record`/`date_of_death`/`pin`/biometric flags are only ever
+   * set when the identity source provides them — currently that's Peleza's
+   * sandbox `/id/ke` endpoint; production's `/national-id` endpoint has no
+   * equivalent fields (see peleza-provider.ts), so those won't appear on a
+   * live production decision right now.
+   *
+   * `credit_detail` is only present when the credit-bureau lookup actually
+   * ran and succeeded.
    */
-  applicant?: { full_name: string | null };
+  applicant?: {
+    id_valid: boolean;
+    full_name: string | null;
+    dob: string | null;
+    gender: string | null;
+    phone_on_record?: string | null;
+    date_of_death?: string | null;
+    pin?: string | null;
+    has_photo?: boolean;
+    has_fingerprint?: boolean;
+    has_signature?: boolean;
+  };
   credit_detail?: { score: string | null; delinquency_code: string | null; is_guarantor: boolean | null };
   recommended_action: DecisionAction;
   risk_score: number; // 0–1000

@@ -16,6 +16,11 @@ const NATIONAL_ID_PATH = "/api/v1/national-id";
 const BANK_ACCOUNT_PATH = "/api/v1/bank-account";
 const CREDIT_INFO_PATH = "/api/v1/credit-info";
 const LOOKUP_REQUEST_TIMEOUT_MS = 8_000;
+// credit-info is a much heavier report to generate than identity/bank —
+// observed real production latency clustered at 7.5-8s across several
+// calls, with one exceeding the shared 8s budget and timing out on our own
+// side (not Peleza's). Give it real headroom instead of the shared default.
+const CREDIT_INFO_REQUEST_TIMEOUT_MS = 15_000;
 
 /** The subset of PelezaAuthClient that a lookup adapter needs — lets tests inject a fake without real env vars. */
 export interface PelezaTokenSource {
@@ -77,9 +82,9 @@ export class PelezaProvider implements IdentityProvider {
     return this.tokenSource;
   }
 
-  private async postJson(path: string, token: string, body: unknown): Promise<Response> {
+  private async postJson(path: string, token: string, body: unknown, timeoutMs: number = LOOKUP_REQUEST_TIMEOUT_MS): Promise<Response> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), LOOKUP_REQUEST_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await fetch(`${this.getTokenSource().baseUrl}${path}`, {
         method: "POST",
@@ -221,7 +226,7 @@ export class PelezaProvider implements IdentityProvider {
     const startedAt = Date.now();
     try {
       const token = await this.getTokenSource().getToken();
-      const response = await this.postJson(CREDIT_INFO_PATH, token, { identity_number: nationalId });
+      const response = await this.postJson(CREDIT_INFO_PATH, token, { identity_number: nationalId }, CREDIT_INFO_REQUEST_TIMEOUT_MS);
       const latencyMs = Date.now() - startedAt;
 
       if (!response.ok) return await this.ambiguous503ErrorResultFor(response, CREDIT_ERROR_MESSAGE_BY_STATUS, latencyMs);

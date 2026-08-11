@@ -5,6 +5,7 @@ import type { DecisionRepository, DecisionRecord } from "../domain/ports/decisio
 import type { AuditLog, AuditAppendResult } from "../domain/ports/audit-log.js";
 import type { CaseStore } from "../domain/ports/case-store.js";
 import type { EntityGraph } from "../domain/ports/entity-graph.js";
+import type { IdentitySignal } from "../domain/ports/identity-provider.js";
 import type { CreditDetail } from "./signal-gatherer.js";
 
 export interface FinalizeInput {
@@ -21,9 +22,24 @@ export interface FinalizeInput {
   modelVersion: string;
   signalsUsed: SignalUsage[];
   latencyMs: number;
-  /** Analyst-detail only — attached to the HTTP response, never persisted to the audit-safe DecisionRecord. */
-  applicantFullName?: string | null;
+  /** Analyst-detail only — attached to the HTTP response, never persisted to the audit-safe DecisionRecord. Always available (falls back to the empty/unresolved sentinel). */
+  identity: IdentitySignal;
   creditDetail?: CreditDetail;
+}
+
+function buildApplicantDetail(identity: IdentitySignal): NonNullable<DecisionResponse["applicant"]> {
+  return {
+    id_valid: identity.id_valid,
+    full_name: identity.full_name,
+    dob: identity.dob,
+    gender: identity.gender,
+    ...(identity.phone_on_record !== undefined ? { phone_on_record: identity.phone_on_record } : {}),
+    ...(identity.date_of_death !== undefined ? { date_of_death: identity.date_of_death } : {}),
+    ...(identity.pin !== undefined ? { pin: identity.pin } : {}),
+    ...(identity.has_photo !== undefined ? { has_photo: identity.has_photo } : {}),
+    ...(identity.has_fingerprint !== undefined ? { has_fingerprint: identity.has_fingerprint } : {}),
+    ...(identity.has_signature !== undefined ? { has_signature: identity.has_signature } : {}),
+  };
 }
 
 function auditSignalUsage(result: AuditAppendResult): SignalUsage {
@@ -125,7 +141,7 @@ export class DecisionSink {
       initiated_by: input.request.initiated_by,
       // Analyst-detail fields — HTTP response only, deliberately excluded from
       // `record`/`redactedPayload` above (never persisted, never audited).
-      applicant: { full_name: input.applicantFullName ?? null },
+      applicant: buildApplicantDetail(input.identity),
       ...(input.creditDetail
         ? {
             credit_detail: {

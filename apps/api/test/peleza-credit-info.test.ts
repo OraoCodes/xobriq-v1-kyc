@@ -176,7 +176,9 @@ describe("PelezaProvider.getCredit — credit-info lookup (mocked fetch)", () =>
     const provider = new PelezaProvider(fakeTokenSource);
 
     const resultPromise = provider.getCredit("10000004");
-    await vi.advanceTimersByTimeAsync(9_000);
+    // credit-info's own timeout is 15s (longer than the 8s shared default —
+    // see peleza-provider.ts's CREDIT_INFO_REQUEST_TIMEOUT_MS).
+    await vi.advanceTimersByTimeAsync(16_000);
     const result = await resultPromise;
 
     expect(result.status).toBe("timeout");

@@ -54,21 +54,78 @@ const request = (nationalId: string): DecisionRequest => ({
 });
 
 describe("applicant.full_name and credit_detail — analyst-detail fields on DecisionResponse", () => {
-  it("a clean MockProvider decision reports the applicant's name but omits credit_detail (Mock never sets those fields)", async () => {
+  it("a clean MockProvider decision reports the applicant's core identity fields but omits credit_detail (Mock never sets those fields)", async () => {
     const persistence = new InMemoryPersistence();
     const response = await decide(request("10000001"), { customerId: CUSTOMER }, depsFor(persistence));
 
-    expect(response.applicant?.full_name).toBe("Alice Wanjiru Kamau");
+    expect(response.applicant).toEqual({
+      id_valid: true,
+      full_name: "Alice Wanjiru Kamau",
+      dob: "1990-05-14",
+      gender: "F",
+      phone_on_record: "+254711000001",
+    });
     expect(response.credit_detail).toBeUndefined();
   });
 
-  it("a hard-rule BLOCK (invalid identity) reports applicant.full_name: null, no credit_detail (tier 2a never ran)", async () => {
+  it("a hard-rule BLOCK (invalid identity) reports id_valid: false, full_name: null, no credit_detail (tier 2a never ran)", async () => {
     const persistence = new InMemoryPersistence();
     const response = await decide(request("10000002"), { customerId: CUSTOMER }, depsFor(persistence));
 
     expect(response.recommended_action).toBe("BLOCK");
-    expect(response.applicant?.full_name).toBeNull();
+    expect(response.applicant).toEqual({ id_valid: false, full_name: null, dob: null, gender: null });
     expect(response.credit_detail).toBeUndefined();
+  });
+
+  it("surfaces phone/deceased/pin/biometric fields when the identity source provides them (e.g. sandbox /id/ke)", async () => {
+    const persistence = new InMemoryPersistence();
+    const richIdentityProvider: IdentityProvider = {
+      async getIdentity(): Promise<ProviderResult<IdentitySignal>> {
+        return {
+          status: "success",
+          data: {
+            id_valid: true,
+            full_name: "Rich Detail Subject",
+            dob: "1985-06-01",
+            gender: "M",
+            phone_on_record: "+254700000000",
+            date_of_death: null,
+            pin: "A123456789Z",
+            has_photo: true,
+            has_fingerprint: false,
+            has_signature: true,
+          },
+          latencyMs: 1,
+        };
+      },
+      async getCredit(): Promise<ProviderResult<CreditSignal>> {
+        return { status: "not_found", data: null, latencyMs: 1 };
+      },
+      async getBankAccountName(): Promise<ProviderResult<Pick<IdentitySignal, "bank_account_name">>> {
+        return { status: "not_found", data: null, latencyMs: 1 };
+      },
+      async getKraTaxpayerName(): Promise<ProviderResult<Pick<IdentitySignal, "kra_taxpayer_name">>> {
+        return { status: "not_found", data: null, latencyMs: 1 };
+      },
+      async getDrivingLicence(): Promise<ProviderResult<Pick<IdentitySignal, "dl_dob">>> {
+        return { status: "not_found", data: null, latencyMs: 1 };
+      },
+    };
+
+    const response = await decide(request("55555555"), { customerId: CUSTOMER }, depsFor(persistence, richIdentityProvider));
+
+    expect(response.applicant).toEqual({
+      id_valid: true,
+      full_name: "Rich Detail Subject",
+      dob: "1985-06-01",
+      gender: "M",
+      phone_on_record: "+254700000000",
+      date_of_death: null,
+      pin: "A123456789Z",
+      has_photo: true,
+      has_fingerprint: false,
+      has_signature: true,
+    });
   });
 
   it("a provider that supplies credit_score/delinquency_code/is_guarantor surfaces them in credit_detail", async () => {

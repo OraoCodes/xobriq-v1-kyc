@@ -77,7 +77,7 @@ export async function decide(request: DecisionRequest, context: DecideContext, d
     modelVersion: config.weights.version,
     signalsUsed: outcome.signalsUsed,
     latencyMs: Date.now() - startedAt,
-    applicantFullName: prepared.identity.full_name,
+    identity: prepared.identity,
     ...(outcome.creditDetail ? { creditDetail: outcome.creditDetail } : {}),
   });
 
