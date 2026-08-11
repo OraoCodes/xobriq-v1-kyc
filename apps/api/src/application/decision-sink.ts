@@ -5,6 +5,7 @@ import type { DecisionRepository, DecisionRecord } from "../domain/ports/decisio
 import type { AuditLog, AuditAppendResult } from "../domain/ports/audit-log.js";
 import type { CaseStore } from "../domain/ports/case-store.js";
 import type { EntityGraph } from "../domain/ports/entity-graph.js";
+import type { CreditDetail } from "./signal-gatherer.js";
 
 export interface FinalizeInput {
   request: DecisionRequest;
@@ -20,6 +21,9 @@ export interface FinalizeInput {
   modelVersion: string;
   signalsUsed: SignalUsage[];
   latencyMs: number;
+  /** Analyst-detail only — attached to the HTTP response, never persisted to the audit-safe DecisionRecord. */
+  applicantFullName?: string | null;
+  creditDetail?: CreditDetail;
 }
 
 function auditSignalUsage(result: AuditAppendResult): SignalUsage {
@@ -119,6 +123,18 @@ export class DecisionSink {
       event_type: input.request.event_type,
       reference_id: input.request.reference_id ?? null,
       initiated_by: input.request.initiated_by,
+      // Analyst-detail fields — HTTP response only, deliberately excluded from
+      // `record`/`redactedPayload` above (never persisted, never audited).
+      applicant: { full_name: input.applicantFullName ?? null },
+      ...(input.creditDetail
+        ? {
+            credit_detail: {
+              score: input.creditDetail.score,
+              delinquency_code: input.creditDetail.delinquencyCode,
+              is_guarantor: input.creditDetail.isGuarantor,
+            },
+          }
+        : {}),
       recommended_action: input.action,
       risk_score: input.score,
       risk_band: riskBand,

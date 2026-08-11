@@ -69,6 +69,10 @@ export interface CreditSignal {
   applications_3m?: number;
   /** The bureau's own fraud flag, when the vendor exposes one. */
   has_fraud?: boolean;
+  /** Captured for analyst detail only — no rule reads these, their fraud weight would be a guess. */
+  credit_score?: string;
+  delinquency_code?: string;
+  is_guarantor?: boolean;
 }
 
 /**

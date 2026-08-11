@@ -104,6 +104,15 @@ export interface DecisionResponse {
    * a decision fetched later via history/review won't carry this field.
    */
   mode?: "test" | "live";
+  /**
+   * Analyst-detail, for digging into a fresh result — HTTP layer only, not
+   * persisted, so a decision fetched later via history/review won't carry
+   * these fields. `full_name` is always present (null if unresolved);
+   * `credit_detail` only when the credit-bureau lookup actually ran and
+   * succeeded. None of this is scored — it's read-only context.
+   */
+  applicant?: { full_name: string | null };
+  credit_detail?: { score: string | null; delinquency_code: string | null; is_guarantor: boolean | null };
   recommended_action: DecisionAction;
   risk_score: number; // 0–1000
   risk_band: RiskBand;

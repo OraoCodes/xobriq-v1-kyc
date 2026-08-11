@@ -18,6 +18,8 @@ export interface DecisionCoreData {
   latency_ms: number | null;
   /** Absent for decisions fetched from history/review (not persisted) — only present on a fresh result. */
   mode?: "test" | "live";
+  applicant?: { full_name: string | null };
+  credit_detail?: { score: string | null; delinquency_code: string | null; is_guarantor: boolean | null };
 }
 
 function ModeBadge({ mode }: { mode: "test" | "live" }) {
@@ -90,6 +92,46 @@ export function DecisionCore({ decision, subtitle }: { decision: DecisionCoreDat
         <h2 className="mb-3 text-sm font-medium text-ink-soft">Signals consulted</h2>
         <SignalChips signals={decision.signals_used} />
       </section>
+
+      {(decision.applicant || decision.credit_detail) && (
+        <details className="group mt-6 rounded-xl border border-hairline bg-surface p-5">
+          <summary className="cursor-pointer select-none text-sm font-medium text-ink-soft marker:content-none">
+            <span className="inline-flex items-center gap-1.5">
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" className="transition-transform group-open:rotate-90">
+                <path d="M5 3l6 5-6 5V3z" />
+              </svg>
+              Applicant &amp; credit detail
+              <span className="font-normal text-ink-soft/70">— for digging deeper</span>
+            </span>
+          </summary>
+          <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            {decision.applicant && (
+              <div>
+                <dt className="text-xs text-ink-soft">Full name (from identity check)</dt>
+                <dd className="mt-0.5 text-ink">{decision.applicant.full_name ?? "Not resolved"}</dd>
+              </div>
+            )}
+            {decision.credit_detail?.score !== null && decision.credit_detail?.score !== undefined && (
+              <div>
+                <dt className="text-xs text-ink-soft">Credit score</dt>
+                <dd className="mt-0.5 font-mono text-ink">{decision.credit_detail.score}</dd>
+              </div>
+            )}
+            {decision.credit_detail?.delinquency_code !== null && decision.credit_detail?.delinquency_code !== undefined && (
+              <div>
+                <dt className="text-xs text-ink-soft">Delinquency code</dt>
+                <dd className="mt-0.5 font-mono text-ink">{decision.credit_detail.delinquency_code}</dd>
+              </div>
+            )}
+            {decision.credit_detail?.is_guarantor !== null && decision.credit_detail?.is_guarantor !== undefined && (
+              <div>
+                <dt className="text-xs text-ink-soft">Is guarantor elsewhere</dt>
+                <dd className="mt-0.5 text-ink">{decision.credit_detail.is_guarantor ? "Yes" : "No"}</dd>
+              </div>
+            )}
+          </dl>
+        </details>
+      )}
     </div>
   );
 }

@@ -153,6 +153,9 @@ export function parseCreditInfoSignal(envelope: PelezaCreditInfoEnvelope): Credi
   if (d.enquiries?.last_3_months !== undefined) signal.inquiries_3m = d.enquiries.last_3_months;
   if (d.credit_applications?.last_3_months !== undefined) signal.applications_3m = d.credit_applications.last_3_months;
   if (d.has_fraud !== undefined) signal.has_fraud = d.has_fraud;
+  if (d.credit_score !== undefined) signal.credit_score = d.credit_score;
+  if (d.delinquency_code !== undefined) signal.delinquency_code = d.delinquency_code;
+  if (d.is_guarantor !== undefined) signal.is_guarantor = d.is_guarantor;
 
   return signal;
 }

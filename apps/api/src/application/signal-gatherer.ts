@@ -20,10 +20,18 @@ export interface PreparedContext {
   hardRule: HardRuleVerdict | null;
 }
 
+export interface CreditDetail {
+  score: string | null;
+  delinquencyCode: string | null;
+  isGuarantor: boolean | null;
+}
+
 export interface TierGatherResult {
   outcomes: SignalOutcome[];
   features: Partial<Features>;
   signalsUsed: SignalUsage[];
+  /** Analyst-detail only, captured alongside the scored credit features — see CreditSignal's capture-only fields. */
+  creditDetail?: CreditDetail;
 }
 
 function signalUsageFrom(source: string, result: ProviderResult<unknown>, costTier: 0 | 1 | 2): SignalUsage {
@@ -150,7 +158,17 @@ export class SignalGatherer {
     const credit = await this.provider.getCredit(nationalId);
     outcomes.push({ key: "credit", status: credit.status });
     signalsUsed.push(signalUsageFrom("credit_bureau", credit, 2));
-    if (credit.status === "success" && credit.data) features = { ...features, ...creditFeatures(credit.data) };
+    let creditDetail: CreditDetail | undefined;
+    if (credit.status === "success" && credit.data) {
+      features = { ...features, ...creditFeatures(credit.data) };
+      const { credit_score, delinquency_code, is_guarantor } = credit.data;
+      // Only attach when the vendor actually sent at least one of these —
+      // MockProvider never does, so mock-driven decisions cleanly omit this
+      // rather than surfacing a whole object of nulls.
+      if (credit_score !== undefined || delinquency_code !== undefined || is_guarantor !== undefined) {
+        creditDetail = { score: credit_score ?? null, delinquencyCode: delinquency_code ?? null, isGuarantor: is_guarantor ?? null };
+      }
+    }
 
     const disbursementAccount = request.event_data?.disbursement_account;
     const accountNumber = disbursementAccount?.account_number;
@@ -186,7 +204,7 @@ export class SignalGatherer {
       signalsUsed.push({ source: "kra_verification", status: "skipped", latency_ms: null, cost_tier: 2, reason: "no kra_pin in the request" });
     }
 
-    return { outcomes, features, signalsUsed };
+    return { outcomes, features, signalsUsed, ...(creditDetail ? { creditDetail } : {}) };
   }
 
   private async gatherTier2b(request: DecisionRequest, identity: IdentitySignal): Promise<TierGatherResult> {

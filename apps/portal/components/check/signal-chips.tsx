@@ -23,11 +23,12 @@ export function SignalChips({ signals }: { signals: SignalUsage[] }) {
     <div className="flex flex-wrap gap-2">
       {signals.map((signal, i) => {
         const degraded = signal.status === "timeout" || signal.status === "error";
+        const ok = signal.status === "success";
         return (
           <div
             key={`${signal.source}-${i}`}
             className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${
-              degraded ? "border-step-up/40 bg-step-up-tint" : "border-hairline bg-surface"
+              degraded ? "border-step-up/40 bg-step-up-tint" : ok ? "border-allow/30 bg-surface" : "border-hairline bg-surface"
             }`}
             title={signal.reason}
           >
@@ -36,7 +37,7 @@ export function SignalChips({ signals }: { signals: SignalUsage[] }) {
             <span className="rounded-sm bg-paper px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-soft">
               {signal.cost_tier === 0 ? "Free" : "Paid"}
             </span>
-            <span className={degraded ? "text-step-up" : "text-ink-soft"}>{STATUS_LABEL[signal.status] ?? signal.status}</span>
+            <span className={degraded ? "text-step-up" : ok ? "text-allow" : "text-ink-soft"}>{STATUS_LABEL[signal.status] ?? signal.status}</span>
             {signal.latency_ms !== null && <span className="font-mono text-ink-soft">{signal.latency_ms}ms</span>}
           </div>
         );
