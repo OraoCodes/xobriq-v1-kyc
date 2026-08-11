@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
     const token = requireSessionToken();
     const body = await request.json();
     const idempotencyKey = request.headers.get("idempotency-key");
+    const liveCheck = request.headers.get("x-xobriq-live-check") === "true";
 
     const decision = await xobriqFetch("/v1/decisions", token, {
       method: "POST",
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
       headers: {
         "X-Xobriq-Manual": "true",
         ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+        ...(liveCheck ? { "X-Xobriq-Live-Check": "true" } : {}),
       },
     });
     return NextResponse.json(decision);

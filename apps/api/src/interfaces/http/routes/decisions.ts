@@ -83,14 +83,23 @@ export function registerDecisionRoutes(app: FastifyInstance, deps: AppDeps): voi
 
     const idempotencyKeyHeader = request.headers["idempotency-key"];
     const idempotencyKey = typeof idempotencyKeyHeader === "string" ? idempotencyKeyHeader : undefined;
-    const provider = deps.providers[auth.mode];
+
+    // A session is always issued mock-provider access by default (the portal
+    // is the free, self-contained demo path — see auth.ts). This header is
+    // the one narrow, explicit way an operator can opt a SPECIFIC
+    // portal-initiated check into the real, cost-incurring Peleza
+    // integration. API-key callers are unaffected — their mode always comes
+    // from the key itself (sk_test_/sk_live_), never from this header.
+    const liveCheckRequested = request.headers["x-xobriq-live-check"] === "true";
+    const effectiveMode = auth.via === "session" && liveCheckRequested ? "live" : auth.mode;
+    const provider = deps.providers[effectiveMode];
 
     const response = await decide(
       decisionRequest,
       { customerId: auth.customerId, ...(idempotencyKey ? { idempotencyKey } : {}) },
       { provider, graph: deps.graph, decisions: deps.decisions, audit: deps.audit, cases: deps.cases },
     );
-    reply.code(200).send(response);
+    reply.code(200).send({ ...response, mode: effectiveMode });
   });
 
   app.get("/v1/decisions/:id", async (request, reply) => {

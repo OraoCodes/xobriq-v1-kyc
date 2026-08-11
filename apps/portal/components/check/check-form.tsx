@@ -11,6 +11,8 @@ export interface CheckFormValues {
   account_number?: string;
   bank_id?: number;
   reference_id?: string;
+  /** Routing directive, not decision data — never sent as part of the DecisionRequest body, only as a header. */
+  live_check?: boolean;
 }
 
 export function CheckForm({
@@ -29,6 +31,7 @@ export function CheckForm({
   const [accountName, setAccountName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [bankId, setBankId] = useState<number | undefined>(undefined);
+  const [liveCheck, setLiveCheck] = useState(false);
   const [referenceId, setReferenceId] = useState(initialReferenceId ?? "");
   const [error, setError] = useState<string | null>(null);
   const idInputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +54,7 @@ export function CheckForm({
     if (accountNumber.trim()) values.account_number = accountNumber.trim();
     if (bankId !== undefined) values.bank_id = bankId;
     if (referenceId.trim()) values.reference_id = referenceId.trim();
+    if (liveCheck) values.live_check = true;
 
     onSubmit(values);
   }
@@ -109,6 +113,23 @@ export function CheckForm({
             <div className="sm:col-span-2">
               <BankCombobox bankId={bankId} onChange={setBankId} disabled={disabled} />
               <p className="mt-1 text-xs text-ink-soft/80">Select the bank to check the payout account against the applicant&rsquo;s identity.</p>
+            </div>
+            <div className="sm:col-span-2 rounded-lg border border-block/30 bg-block-tint/40 p-3">
+              <label className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={liveCheck}
+                  onChange={(e) => setLiveCheck(e.target.checked)}
+                  disabled={disabled}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-block"
+                />
+                <span className="text-sm text-ink">
+                  <span className="font-medium">Run against live Peleza</span>
+                  <span className="block text-xs text-ink-soft">
+                    Real vendor call, real cost, real PII — not the demo. Off by default; leave unchecked unless you specifically need to verify the production integration.
+                  </span>
+                </span>
+              </label>
             </div>
           </div>
         )}

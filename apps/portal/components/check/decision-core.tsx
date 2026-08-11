@@ -16,6 +16,22 @@ export interface DecisionCoreData {
   signals_used: SignalUsage[];
   created_at: string;
   latency_ms: number | null;
+  /** Absent for decisions fetched from history/review (not persisted) — only present on a fresh result. */
+  mode?: "test" | "live";
+}
+
+function ModeBadge({ mode }: { mode: "test" | "live" }) {
+  const isLive = mode === "live";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[0.65rem] uppercase tracking-wide ${
+        isLive ? "border-block/40 bg-block-tint text-block" : "border-hairline bg-paper text-ink-soft"
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-block" : "bg-ink-soft"}`} />
+      {isLive ? "Live · Peleza" : "Mock · Demo"}
+    </span>
+  );
 }
 
 /**
@@ -34,7 +50,10 @@ export function DecisionCore({ decision, subtitle }: { decision: DecisionCoreDat
       <section className={`rounded-2xl border ${classes.border}/25 ${classes.tint} px-6 py-10 sm:px-10 sm:py-12`}>
         <div className="mb-6 flex items-center justify-between gap-3">
           <VerdictStamp action={decision.recommended_action} />
-          {subtitle && <span className="font-mono text-xs text-ink-soft">{subtitle}</span>}
+          <div className="flex items-center gap-3">
+            {decision.mode && <ModeBadge mode={decision.mode} />}
+            {subtitle && <span className="font-mono text-xs text-ink-soft">{subtitle}</span>}
+          </div>
         </div>
         <p className="font-display text-[1.625rem] italic leading-[1.28] text-ink sm:text-[2rem]">{counterfactual}</p>
         <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs text-ink-soft">

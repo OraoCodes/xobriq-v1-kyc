@@ -77,7 +77,10 @@ export function CheckFlow({ initialReferenceId }: { initialReferenceId: string |
     try {
       const res = await fetch("/api/decisions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(values.live_check ? { "X-Xobriq-Live-Check": "true" } : {}),
+        },
         body: JSON.stringify(buildRequestBody(values)),
       });
       const json = await res.json();

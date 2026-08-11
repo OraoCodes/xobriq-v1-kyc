@@ -97,6 +97,13 @@ export interface DecisionResponse {
   event_type: string;
   reference_id: string | null;
   initiated_by: InitiatedBy;
+  /**
+   * Which provider actually answered this decision: "test" (MockProvider,
+   * synthetic personas, free) or "live" (real Peleza, real cost/PII).
+   * Attached at the HTTP layer when the response is built, not persisted —
+   * a decision fetched later via history/review won't carry this field.
+   */
+  mode?: "test" | "live";
   recommended_action: DecisionAction;
   risk_score: number; // 0–1000
   risk_band: RiskBand;
