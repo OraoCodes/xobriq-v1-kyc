@@ -154,7 +154,9 @@ describe("PelezaProvider.getIdentity — Kenya-ID lookup (mocked fetch)", () => 
     const provider = new PelezaProvider(fakeTokenSource);
 
     const resultPromise = provider.getIdentity("10000001");
-    await vi.advanceTimersByTimeAsync(9_000);
+    // identity's own timeout is 15s (raised from the 8s shared default —
+    // see peleza-provider.ts's IDENTITY_REQUEST_TIMEOUT_MS).
+    await vi.advanceTimersByTimeAsync(16_000);
     const result = await resultPromise;
 
     expect(result.status).toBe("timeout");

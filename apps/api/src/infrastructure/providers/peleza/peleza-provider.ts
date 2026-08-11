@@ -15,11 +15,14 @@ const KENYA_ID_PATH = "/api/v1/id/ke";
 const NATIONAL_ID_PATH = "/api/v1/national-id";
 const BANK_ACCOUNT_PATH = "/api/v1/bank-account";
 const CREDIT_INFO_PATH = "/api/v1/credit-info";
+// The shared 8s budget is fine for bank-account (observed ~90ms), but both
+// identity and credit-info are heavier production lookups whose real
+// latency has repeatedly run 6-8.4s across many calls this session —
+// uncomfortably close to (and at least twice past) 8s. Both get their own
+// longer, dedicated budget instead of intermittently clipping whichever
+// one happens to run slow.
 const LOOKUP_REQUEST_TIMEOUT_MS = 8_000;
-// credit-info is a much heavier report to generate than identity/bank —
-// observed real production latency clustered at 7.5-8s across several
-// calls, with one exceeding the shared 8s budget and timing out on our own
-// side (not Peleza's). Give it real headroom instead of the shared default.
+const IDENTITY_REQUEST_TIMEOUT_MS = 15_000;
 const CREDIT_INFO_REQUEST_TIMEOUT_MS = 15_000;
 
 /** The subset of PelezaAuthClient that a lookup adapter needs — lets tests inject a fake without real env vars. */
@@ -128,7 +131,7 @@ export class PelezaProvider implements IdentityProvider {
     try {
       const token = await this.getTokenSource().getToken();
       const path = isSandbox ? KENYA_ID_PATH : NATIONAL_ID_PATH;
-      const response = await this.postJson(path, token, { id_number: nationalId });
+      const response = await this.postJson(path, token, { id_number: nationalId }, IDENTITY_REQUEST_TIMEOUT_MS);
       const latencyMs = Date.now() - startedAt;
 
       if (!response.ok) {
