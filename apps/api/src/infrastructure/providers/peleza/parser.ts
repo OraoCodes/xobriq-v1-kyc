@@ -1,6 +1,7 @@
 import type { ProviderResult, IdentitySignal, CreditSignal } from "../../../domain/ports/identity-provider.js";
 import type {
   PelezaKenyaIdEnvelope,
+  PelezaNationalIdEnvelope,
   PelezaBankAccountEnvelope,
   PelezaKraEnvelope,
   PelezaDrivingLicenceEnvelope,
@@ -52,6 +53,27 @@ export function parseKenyaIdSignal(envelope: PelezaKenyaIdEnvelope): IdentitySig
     has_photo: d.has_photo,
     has_fingerprint: d.has_fingerprint,
     has_signature: d.has_signature,
+  };
+}
+
+/**
+ * Pure mapping from a successfully-fetched national-id envelope (the
+ * PRODUCTION identity fallback — see types.ts's doc comment) to the
+ * vendor-neutral IdentitySignal. Deliberately does NOT populate
+ * date_of_death/pin/has_photo/has_fingerprint/has_signature — this
+ * endpoint's response has no equivalent fields, and leaving them unset is
+ * more honest than guessing. This means the deceased hard-rule cannot fire
+ * from a national-id-sourced identity signal.
+ */
+export function parseNationalIdSignal(envelope: PelezaNationalIdEnvelope): IdentitySignal | null {
+  if (!envelope.success || !envelope.data) return null;
+
+  const d = envelope.data;
+  return {
+    id_valid: d.valid,
+    full_name: d.name,
+    dob: d.dob,
+    gender: normaliseKenyaIdGender(d.gender),
   };
 }
 

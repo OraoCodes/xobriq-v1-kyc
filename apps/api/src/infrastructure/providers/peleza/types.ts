@@ -57,6 +57,42 @@ export interface PelezaKenyaIdEnvelope {
 }
 
 /**
+ * PelezaNationalIdEnvelope — a SECOND, separate identity endpoint
+ * (`POST /api/v1/national-id`), confirmed live against PRODUCTION
+ * (`verify.peleza.com`) on 2026-08-11, when `/api/v1/id/ke` — otherwise
+ * verified working in sandbox — started 500ing in production. This shape
+ * matches what the Kenya-ID field list was ORIGINALLY (wrongly) drafted
+ * from before live-testing corrected it — apparently that shape belongs to
+ * this different endpoint instead.
+ *
+ * IMPORTANT: this response carries NO date_of_death, pin, or biometric
+ * (has_photo/has_fingerprint/has_signature) fields at all — those are
+ * `/id/ke`-only. The deceased hard-rule (IDENTITY_DECEASED) cannot fire
+ * from a national-id-sourced signal; parseNationalIdSignal leaves those
+ * IdentitySignal fields unset rather than guessing.
+ */
+export interface PelezaNationalIdData {
+  id_number: string;
+  first_name: string;
+  last_name: string;
+  other_name: string;
+  name: string;
+  gender: string; // observed values: "Male" | "Female"
+  dob: string; // ISO 8601, confirmed live against production, e.g. "1990-05-14"
+  citizenship: string;
+  valid: boolean;
+  status: string; // e.g. "Active"
+}
+
+export interface PelezaNationalIdEnvelope {
+  success: boolean;
+  response_code: number;
+  message: string;
+  data: PelezaNationalIdData | null;
+  request_id: string;
+}
+
+/**
  * PelezaBankAccountEnvelope — the real shape of Peleza's bank-account lookup
  * (`POST /api/v1/bank-account`). PROVISIONAL: drafted from documentation
  * text, not yet confirmed against a live call the way Kenya-ID was — the

@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "response_code": 200,
+  "message": "National ID Details Fetched Successfully",
+  "data": {
+    "id_number": "10000001",
+    "first_name": "Alice",
+    "last_name": "Kamau",
+    "other_name": "Wanjiru",
+    "name": "Alice Wanjiru Kamau",
+    "gender": "Female",
+    "dob": "1990-05-14",
+    "citizenship": "Kenyan",
+    "valid": true,
+    "status": "Active"
+  },
+  "request_id": "req_synthetic_national_id_001"
+}

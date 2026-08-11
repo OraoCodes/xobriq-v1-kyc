@@ -8,7 +8,7 @@
  * for its bearer credential. This file owns the token lifecycle only.
  */
 
-const SANDBOX_BASE_URL = "https://sandbox.peleza.com";
+export const SANDBOX_BASE_URL = "https://sandbox.peleza.com";
 const TOKEN_PATH = "/api/v1/oauth/token";
 
 /** Refresh proactively once within this many ms of expiry — never hand out a token about to die mid-request. */

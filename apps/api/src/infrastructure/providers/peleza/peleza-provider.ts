@@ -1,10 +1,18 @@
 import type { IdentityProvider, IdentitySignal, CreditSignal, ProviderResult } from "../../../domain/ports/identity-provider.js";
-import { PelezaAuthClient, PelezaAuthError } from "./auth-client.js";
-import type { PelezaKenyaIdEnvelope, PelezaBankAccountEnvelope, PelezaCreditInfoEnvelope } from "./types.js";
-import { parseKenyaIdSignal, parseBankAccountSignal, parseCreditInfoSignal, parseKraEnvelope, parseDrivingLicenceEnvelope } from "./parser.js";
+import { PelezaAuthClient, PelezaAuthError, SANDBOX_BASE_URL } from "./auth-client.js";
+import type { PelezaKenyaIdEnvelope, PelezaNationalIdEnvelope, PelezaBankAccountEnvelope, PelezaCreditInfoEnvelope } from "./types.js";
+import {
+  parseKenyaIdSignal,
+  parseNationalIdSignal,
+  parseBankAccountSignal,
+  parseCreditInfoSignal,
+  parseKraEnvelope,
+  parseDrivingLicenceEnvelope,
+} from "./parser.js";
 import { KRA_ENVELOPE_ALICE, DL_ENVELOPE_ALICE } from "./fixtures/alice.js";
 
 const KENYA_ID_PATH = "/api/v1/id/ke";
+const NATIONAL_ID_PATH = "/api/v1/national-id";
 const BANK_ACCOUNT_PATH = "/api/v1/bank-account";
 const CREDIT_INFO_PATH = "/api/v1/credit-info";
 const LOOKUP_REQUEST_TIMEOUT_MS = 8_000;
@@ -98,25 +106,39 @@ export class PelezaProvider implements IdentityProvider {
     return { status: "error", data: null, latencyMs, error: `Peleza ${label} lookup failed unexpectedly` };
   }
 
+  /**
+   * `/api/v1/id/ke` is verified working against SANDBOX and is the richer
+   * shape (carries date_of_death/pin/biometric flags). `/api/v1/national-id`
+   * is a separate endpoint confirmed working against PRODUCTION when
+   * `/id/ke` started 500ing there (2026-08-11) — its response has no
+   * deceased/pin/biometric fields at all, so identity signals sourced from
+   * production currently can't feed the deceased hard-rule. Routing is by
+   * base URL: sandbox keeps using the richer, verified endpoint; anything
+   * else (production) uses the one actually confirmed to work there. If
+   * Peleza ever fixes `/id/ke` in production, this should be revisited.
+   */
   async getIdentity(nationalId: string): Promise<ProviderResult<IdentitySignal>> {
     const startedAt = Date.now();
+    const isSandbox = this.getTokenSource().baseUrl === SANDBOX_BASE_URL;
     try {
       const token = await this.getTokenSource().getToken();
-      const response = await this.postJson(KENYA_ID_PATH, token, { id_number: nationalId });
+      const path = isSandbox ? KENYA_ID_PATH : NATIONAL_ID_PATH;
+      const response = await this.postJson(path, token, { id_number: nationalId });
       const latencyMs = Date.now() - startedAt;
 
       if (!response.ok) {
         if (response.status === 404) return { status: "not_found", data: null, latencyMs };
-        const error = KENYA_ID_ERROR_MESSAGE_BY_STATUS[response.status] ?? `Peleza Kenya-ID lookup returned ${response.status}`;
+        const error = KENYA_ID_ERROR_MESSAGE_BY_STATUS[response.status] ?? `Peleza identity lookup returned ${response.status}`;
         return { status: "error", data: null, latencyMs, error };
       }
 
-      const envelope = (await response.json()) as PelezaKenyaIdEnvelope;
-      const signal = parseKenyaIdSignal(envelope);
+      const signal = isSandbox
+        ? parseKenyaIdSignal((await response.json()) as PelezaKenyaIdEnvelope)
+        : parseNationalIdSignal((await response.json()) as PelezaNationalIdEnvelope);
       if (!signal) return { status: "not_found", data: null, latencyMs };
       return { status: "success", data: signal, latencyMs };
     } catch (error) {
-      return this.degradedResult("kenya-id", error, Date.now() - startedAt);
+      return this.degradedResult("identity", error, Date.now() - startedAt);
     }
   }
 
